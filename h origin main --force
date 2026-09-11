@@ -1,0 +1,17 @@
+[33mcommit 41ce142a371bfe8b17fa2a7a04b0a7d8310c0c06[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: Castorboy057 <castor_termineitor@hotmail.com>
+Date:   Tue Sep 8 20:25:05 2026 -0600
+
+    feat(rive): animation added
+
+ assets/bimbo.riv                               | Bin [31m0[m -> [32m41575[m bytes
+ lib/main.dart                                  | 106 [32m+[m[31m------------------------[m
+ lib/screens/login_screen.dart                  |  33 [32m++++++++[m
+ linux/flutter/generated_plugin_registrant.cc   |   4 [32m+[m
+ linux/flutter/generated_plugins.cmake          |   1 [32m+[m
+ macos/Flutter/GeneratedPluginRegistrant.swift  |   2 [32m+[m
+ pubspec.lock                                   |  77 [32m++++++++++++++++++[m
+ pubspec.yaml                                   |   2 [32m+[m[31m-[m
+ windows/flutter/generated_plugin_registrant.cc |   3 [32m+[m
+ windows/flutter/generated_plugins.cmake        |   1 [32m+[m
+ 10 files changed, 125 insertions(+), 104 deletions(-)
