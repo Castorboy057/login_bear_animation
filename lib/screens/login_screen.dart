@@ -29,6 +29,58 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailFocus = FocusNode();
   final _passwordFocus = FocusNode();
 
+  //4.1 controllers
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
+  //Errror message
+  String? ermailerror;
+  String? passworderror;
+
+  // 4.2 Validacion de campos
+  bool _isValidEmail(String email) {
+    final re = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+    return re.hasMatch(email);
+  }
+
+  bool _isValidPassword(String password) {
+    final re = RegExp(
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$',
+    );
+    return re.hasMatch(password);
+  }
+
+  // 4.4 Dar accion al botton de login
+  void _onLogin() {
+    //de lo que escribe el usuario, quitar espacios en blanco
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    //4.6 evaluar errores
+    final eError = _isValidEmail(email) ? null : 'Invalid email t';
+    final pError = _isValidPassword(password) ? null : 'invalid password';
+
+    //4.7 avisar cambios
+    setState(() {
+      ermailerror = eError;
+      passworderror = pError;
+    });
+
+    //4.8 cerrar el teclado y bajar las manos del oso
+    FocusScope.of(context).unfocus();
+    _TypingDebunce?.cancel();
+    _isHandsUp?.change(false);
+    _isChecking?.change(false);
+    _numLook?.value = 50.0;
+
+    //4.9 activar triggers
+    if (eError == null && pError == null) {
+      _trigSuccess?.fire();
+    } else {
+      _trigFail?.fire();
+    }
+  }
+
   // 2.2 Listeners
   @override
   void initState() {
@@ -89,6 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Campo Email
                 TextField(
+                  controller: _emailController,
                   focusNode: _emailFocus,
                   onChanged: (value) {
                     if (_isChecking == null) return;
@@ -112,6 +165,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
+                    errorText: ermailerror,
                     hintText: 'Email',
                     prefixIcon: const Icon(Icons.email),
                     border: OutlineInputBorder(
@@ -123,6 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 // Campo Password
                 TextField(
+                  controller: _passwordController,
                   focusNode: _passwordFocus,
                   onChanged: (value) {
                     if (_isHandsUp == null) return;
@@ -130,6 +185,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   },
                   obscureText: _obscure,
                   decoration: InputDecoration(
+                    //4.11 mostrar error
+                    errorText: passworderror,
                     hintText: 'Password',
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
@@ -145,6 +202,56 @@ class _LoginScreenState extends State<LoginScreen> {
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                  ),
+                ),
+                SizedBox(height: 10),
+                //olvide a mi contraseña
+                SizedBox(height: 10),
+                SizedBox(
+                  width: size.width,
+                  child: const Text(
+                    'Forgot Password?',
+                    textAlign: TextAlign.right,
+                    style: TextStyle(decoration: TextDecoration.underline),
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Boton Login
+                MaterialButton(
+                  minWidth: size.width,
+                  height: 50,
+                  color: Colors.deepPurple,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  onPressed: _onLogin,
+                  child: Text(
+                    'Login',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+
+                    children: [
+                      const Text('Don\'t have an account?'),
+                      TextButton(
+                        onPressed: () {
+                          // Acción al presionar el botón
+                        },
+                        child: Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            color: Colors.blue,
+                            decoration: TextDecoration.underline,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ],
