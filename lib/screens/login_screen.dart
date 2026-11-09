@@ -1,7 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:rive/rive.dart';
 
-import 'dart:async'; // Importar el Timer
+import 'dart:async';
+
+import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -58,18 +61,22 @@ class _LoginScreenState extends State<LoginScreen> {
     return re.hasMatch(password);
   }
 
-  // ACCIÓN DEL BOTÓN LOGIN
-  void _onLogin() {
+  // ACCIÓN DEL BOTÓN LOGIN CON FIREBASE
+  Future<void> _onLogin() async {
     final email = _emailCtrl.text.trim();
     final pass = _passCtrl.text;
 
-    final eError = isValidEmail(email) ? null : "Invalid email";
-    final pError = isValidPassword(pass) ? null : "Invalid password";
+    final eError = isValidEmail(email) ? null : "Invalid email format";
 
     setState(() {
       _emailError = eError;
-      _passError = pError;
+      _passError = null;
     });
+
+    if (eError != null) {
+      _trigFail?.fire();
+      return;
+    }
 
     FocusScope.of(context).unfocus();
     _typingDebounce?.cancel();
@@ -78,11 +85,154 @@ class _LoginScreenState extends State<LoginScreen> {
     _isHandsUp?.change(false);
     _numLook?.value = 50.0;
 
-    if (eError == null && pError == null) {
+    try {
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: pass,
+      );
+
       _trigSuccess?.fire();
-    } else {
+
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
       _trigFail?.fire();
+      setState(() {
+        _passError = e.message ?? "Authentication failed";
+      });
     }
+  }
+
+  // ACCIÓN DEL BOTÓN SIGN UP CON FIREBASE
+  Future<void> _onSignUp() async {
+    final email = _emailCtrl.text.trim();
+    final pass = _passCtrl.text;
+
+    final eError = isValidEmail(email) ? null : "Invalid email format";
+    final pError = isValidPassword(pass)
+        ? null
+        : "Weak password (8+ chars, A-Z, 0-9, symbol)";
+
+    setState(() {
+      _emailError = eError;
+      _passError = pError;
+    });
+
+    if (eError != null || pError != null) {
+      _trigFail?.fire();
+      return;
+    }
+
+    FocusScope.of(context).unfocus();
+    _typingDebounce?.cancel();
+
+    _isChecking?.change(false);
+    _isHandsUp?.change(false);
+    _numLook?.value = 50.0;
+
+    try {
+      await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: pass,
+      );
+
+      _trigSuccess?.fire();
+
+      await Future.delayed(const Duration(milliseconds: 1200));
+      if (!mounted) return;
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const HomeScreen()),
+      );
+    } on FirebaseAuthException catch (e) {
+      _trigFail?.fire();
+      setState(() {
+        _passError = e.message ?? "Registration failed";
+      });
+    }
+  }
+
+  // FUNCIÓN PARA RECUPERAR CONTRASEÑA (Con limpieza de campos)
+  void _showForgotPasswordDialog() {
+    final resetController = TextEditingController(text: _emailCtrl.text.trim());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Recuperar Contraseña'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Ingresa tu correo electrónico registrado y te enviaremos un enlace para restablecer tu contraseña.',
+              style: TextStyle(fontSize: 14),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: resetController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                hintText: 'Correo electrónico',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () async {
+              try {
+                await FirebaseAuth.instance.sendPasswordResetEmail(
+                  email: resetController.text.trim(),
+                );
+                if (!mounted) return;
+
+                // Limpiamos los campos de la pantalla principal al enviar con éxito
+                setState(() {
+                  _emailCtrl.clear();
+                  _passCtrl.clear();
+                  _emailError = null;
+                  _passError = null;
+                });
+
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      '¡Correo de recuperación enviado con éxito! 📧',
+                    ),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } on FirebaseAuthException catch (e) {
+                if (!mounted) return;
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(e.message ?? 'Error al enviar el correo'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            child: const Text('Enviar', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _toggleRememberMe() async {
@@ -164,6 +314,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _emailCtrl,
                   focusNode: _emailFocus,
                   onChanged: (value) {
+                    setState(() {
+                      _emailError = null;
+                    });
+
                     if (_isChecking == null) return;
 
                     _isChecking!.change(true);
@@ -200,6 +354,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _passCtrl,
                   focusNode: _passwordFocus,
                   onChanged: (value) {
+                    setState(() {
+                      _passError = null;
+                    });
+
                     if (_isHandsUp == null) return;
                     _isHandsUp!.change(true);
                   },
@@ -267,9 +425,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                     ),
-                    const Text(
-                      'Forgot Password?',
-                      style: TextStyle(decoration: TextDecoration.underline),
+
+                    // BOTÓN DE RECUPERAR CONTRASEÑA
+                    TextButton(
+                      onPressed: _showForgotPasswordDialog,
+                      child: const Text(
+                        'Forgot Password?',
+                        style: TextStyle(
+                          color: Colors.black54,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -305,7 +471,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(width: 5),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: _onSignUp,
                         child: const Text(
                           'Sign up',
                           style: TextStyle(
